@@ -14,10 +14,11 @@ session_string = os.environ.get("SESSION_STRING")
 
 # -----------------------------------------------------
 TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve']
-DESTINATION_BOT = '@my_airdrop_notification_bot' # আপনার বটের ইউজারনেম দিন
+# আপনার বটের ইউজারনেম এখানে দেওয়া আছে
+DESTINATION_BOT = '@my_airdrop_notification_bot' 
 # -----------------------------------------------------
 
-# ওয়েব সার্ভার (UptimeRobot এর হাবিজাবি লগ বন্ধ করা হয়েছে)
+# ওয়েব সার্ভার
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
@@ -30,7 +31,6 @@ def run_server():
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
 
-# লেখাগুলো জোর করে লগে দেখানোর ফাংশন
 def print_log(msg):
     print(msg, flush=True)
 
@@ -46,8 +46,9 @@ async def keyword_handler(event):
             has_fast_number = bool(FAST_PATTERN.search(text))
             
             if has_keyword or has_fast_number:
-                print_log("🎯 টার্গেট কিওয়ার্ড পাওয়া গেছে! মেসেজ ফরোয়ার্ড করা হচ্ছে...")
+                print_log("🎯 টার্গেট কিওয়ার্ড পাওয়া গেছে! বটের কাছে মেসেজ ফরোয়ার্ড করা হচ্ছে...")
                 try:
+                    # এখানেই মূলত সমস্যাটা ছিল, 'me' এর জায়গায় DESTINATION_BOT দেওয়া হলো
                     await client.send_message(DESTINATION_BOT, "🚨 **AIRDROP ALERT!** 🚨\n\n**Post:**\n" + event.text)
                     await event.forward_to(DESTINATION_BOT)
                 except Exception as e:
