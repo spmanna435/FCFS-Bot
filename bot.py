@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from flask import Flask
@@ -13,17 +14,25 @@ session_string = os.environ.get("SESSION_STRING")
 
 # -----------------------------------------------------
 TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve']
-DESTINATION_BOT = '@my_airdrop_notification_bot' # এখানে আপনার বটের ইউজারনেম দিন
+DESTINATION_BOT = '@my_airdrop_notification_bot' # আপনার বটের ইউজারনেম দিন
 # -----------------------------------------------------
 
+# ওয়েব সার্ভার (UptimeRobot এর হাবিজাবি লগ বন্ধ করা হয়েছে)
 app = Flask(__name__)
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
 @app.route('/')
 def home():
-    return "Airdrop Bot is Running 24/7 on Render!"
+    return "Bot is Running!"
 
 def run_server():
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
+
+# লেখাগুলো জোর করে লগে দেখানোর ফাংশন
+def print_log(msg):
+    print(msg, flush=True)
 
 client = TelegramClient(StringSession(session_string), api_id, api_hash)
 FAST_PATTERN = re.compile(r'\bfast\s*\d+', re.IGNORECASE)
@@ -37,30 +46,26 @@ async def keyword_handler(event):
             has_fast_number = bool(FAST_PATTERN.search(text))
             
             if has_keyword or has_fast_number:
-                print("টার্গেট কিওয়ার্ড পাওয়া গেছে! বটের কাছে ফরোয়ার্ড করা হচ্ছে...")
+                print_log("🎯 টার্গেট কিওয়ার্ড পাওয়া গেছে! মেসেজ ফরোয়ার্ড করা হচ্ছে...")
                 try:
                     await client.send_message(DESTINATION_BOT, "🚨 **AIRDROP ALERT!** 🚨\n\n**Post:**\n" + event.text)
                     await event.forward_to(DESTINATION_BOT)
                 except Exception as e:
-                    print(f"মেসেজ পাঠাতে সমস্যা হয়েছে: {e}")
+                    print_log(f"❌ মেসেজ পাঠাতে সমস্যা: {e}")
 
-# নতুন সিস্টেম: যেন বট আটকে না যায়
 async def main():
+    print_log("🔄 টেলিগ্রামের সাথে কানেক্ট করার চেষ্টা করা হচ্ছে...")
     try:
-        print("টেলিগ্রামের সাথে কানেক্ট করার চেষ্টা করা হচ্ছে...")
         await client.connect()
-        
-        # চেক করবে লগইন ঠিক আছে কি না
         if not await client.is_user_authorized():
-            print("❌ ERROR: আপনার Session String কাজ করছে না বা এক্সপায়ার হয়ে গেছে! দয়া করে Colab থেকে নতুন String বানিয়ে Render-এ দিন।")
+            print_log("❌ ERROR: আপনার Session String কাজ করছে না! Colab থেকে নতুন String বানান।")
             return
             
-        print("✅ বট সফলভাবে চালু হয়েছে! স্ক্যান চলছে...")
+        print_log("✅ বট সফলভাবে চালু হয়েছে! স্ক্যান চলছে...")
         await client.run_until_disconnected()
     except Exception as e:
-        print(f"❌ বড় ধরনের সমস্যা হয়েছে: {e}")
+        print_log(f"❌ বড় সমস্যা হয়েছে: {e}")
 
 if __name__ == '__main__':
     Thread(target=run_server).start()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    asyncio.run(main())
