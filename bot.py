@@ -7,18 +7,15 @@ from flask import Flask
 from threading import Thread
 import asyncio
 
-# পরিবেশ থেকে ডাটা নেওয়া
 api_id = int(os.environ.get("API_ID"))
 api_hash = os.environ.get("API_HASH")
 session_string = os.environ.get("SESSION_STRING")
 
 # -----------------------------------------------------
 TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve']
-# আপনার বটের ইউজারনেম এখানে দেওয়া আছে
 DESTINATION_BOT = '@my_airdrop_notification_bot' 
 # -----------------------------------------------------
 
-# ওয়েব সার্ভার
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
@@ -48,9 +45,9 @@ async def keyword_handler(event):
             if has_keyword or has_fast_number:
                 print_log("🎯 টার্গেট কিওয়ার্ড পাওয়া গেছে! বটের কাছে মেসেজ ফরোয়ার্ড করা হচ্ছে...")
                 try:
-                    # এখানেই মূলত সমস্যাটা ছিল, 'me' এর জায়গায় DESTINATION_BOT দেওয়া হলো
                     await client.send_message(DESTINATION_BOT, "🚨 **AIRDROP ALERT!** 🚨\n\n**Post:**\n" + event.text)
                     await event.forward_to(DESTINATION_BOT)
+                    print_log("✅ বটের কাছে মেসেজ পাঠানো সফল হয়েছে!")
                 except Exception as e:
                     print_log(f"❌ মেসেজ পাঠাতে সমস্যা: {e}")
 
@@ -59,14 +56,18 @@ async def main():
     try:
         await client.connect()
         if not await client.is_user_authorized():
-            print_log("❌ ERROR: আপনার Session String কাজ করছে না! Colab থেকে নতুন String বানান।")
+            print_log("❌ ERROR: আপনার Session String কাজ করছে না!")
             return
             
         print_log("✅ বট সফলভাবে চালু হয়েছে! স্ক্যান চলছে...")
         await client.run_until_disconnected()
     except Exception as e:
-        print_log(f"❌ বড় সমস্যা হয়েছে: {e}")
+        print_log(f"❌ সমস্যা হয়েছে: {e}")
 
 if __name__ == '__main__':
     Thread(target=run_server).start()
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(main())
+    except Exception as e:
+        print_log(f"Error: {e}")
