@@ -43,13 +43,36 @@ async def keyword_handler(event):
             has_fast_number = bool(FAST_PATTERN.search(text))
             
             if has_keyword or has_fast_number:
-                print_log("🎯 টার্গেট কিওয়ার্ড পাওয়া গেছে! বটের কাছে মেসেজ ফরোয়ার্ড করা হচ্ছে...")
-                try:
-                    await client.send_message(DESTINATION_BOT, "🚨 **AIRDROP ALERT!** 🚨\n\n**Post:**\n" + event.text)
-                    await event.forward_to(DESTINATION_BOT)
-                    print_log("✅ বটের কাছে মেসেজ পাঠানো সফল হয়েছে!")
-                except Exception as e:
-                    print_log(f"❌ মেসেজ পাঠাতে সমস্যা: {e}")
+                is_valid_post = False
+                
+                # জাদুকরী ফিল্টার: চেক করা হচ্ছে মেসেজটি কে দিয়েছে
+                if event.is_channel and not event.is_group:
+                    # ১. যদি সরাসরি চ্যানেলের পোস্ট হয় (সবসময় এডমিন দেয়)
+                    is_valid_post = True
+                elif event.is_group:
+                    # ২. যদি চ্যানেল থেকে গ্রুপে অটো-কমেন্ট বা ফরোয়ার্ড হয়ে আসে অথবা কেউ Anonymous Admin হিসেবে দেয়
+                    if event.sender_id is None or (event.message.fwd_from and event.message.fwd_from.from_id):
+                        is_valid_post = True
+                    else:
+                        # ৩. চেক করা হচ্ছে মেসেজটি গ্রুপের কোনো সাধারণ মেম্বার নাকি আসল এডমিন দিয়েছে
+                        try:
+                            perms = await client.get_permissions(event.chat_id, event.sender_id)
+                            if perms.is_admin or perms.is_creator:
+                                is_valid_post = True
+                        except Exception:
+                            pass # এডমিন না হলে ইগনোর করবে
+                
+                # যদি এডমিন বা চ্যানেল হয়, তবেই মেসেজ পাঠাবে
+                if is_valid_post:
+                    print_log("🎯 এডমিনের টার্গেট পোস্ট পাওয়া গেছে! মেসেজ ফরোয়ার্ড করা হচ্ছে...")
+                    try:
+                        await client.send_message(DESTINATION_BOT, "🚨 **AIRDROP ALERT!** 🚨\n\n**Post:**\n" + event.text)
+                        await event.forward_to(DESTINATION_BOT)
+                        print_log("✅ বটের কাছে মেসেজ পাঠানো সফল হয়েছে!")
+                    except Exception as e:
+                        print_log(f"❌ মেসেজ পাঠাতে সমস্যা: {e}")
+                else:
+                    print_log("🚫 সাধারণ মেম্বারের মেসেজ ইগনোর করা হয়েছে।")
 
 async def main():
     print_log("🔄 টেলিগ্রামের সাথে কানেক্ট করার চেষ্টা করা হচ্ছে...")
@@ -65,10 +88,7 @@ async def main():
         print_log(f"❌ সমস্যা হয়েছে: {e}")
 
 if __name__ == '__main__':
-    # ওয়েব সার্ভার চালু
     Thread(target=run_server).start()
-    
-    # নতুন Python ভার্সনের জন্য Event Loop ফিক্স
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
