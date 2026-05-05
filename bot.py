@@ -14,8 +14,7 @@ api_hash = os.environ.get("API_HASH")
 session_string = os.environ.get("SESSION_STRING")
 
 # -----------------------------------------------------
-TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve', 'farcaster users' , 'farcaster user' , 'giveaway', 'exchange airdrop' , 'instant free' , 'exchange offer' , 'wallet airdrop' , 'wallet offer' , 'limited']
-DESTINATION_BOT = '@my_airdrop_notification_bot' 
+TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve', 'farcaster users' , 'farcaster user' , 'giveaway', 'exchange airdrop' , 'instant free' , 'instant claim' , 'exchange offer' , 'wallet airdrop' , 'wallet offer' , 'limited']
 # -----------------------------------------------------
 
 # সাউন্ড ও পপ-আপ নোটিফিকেশনের জন্য (আপনার Apps Script-এর ডাটা এখানে বসান)
@@ -41,19 +40,23 @@ def print_log(msg):
 client = TelegramClient(StringSession(session_string), api_id, api_hash)
 FAST_PATTERN = re.compile(r'\b(fast|first|instant|claim)\s*\d+', re.IGNORECASE)
 
-# সাউন্ডসহ মেসেজ পাঠানোর ফাংশন
-def send_sound_alert():
+# সরাসরি মেইন অ্যাকাউন্টের বটে সাউন্ডসহ পুরো পোস্ট পাঠানোর ফাংশন
+def send_alert_to_main_bot(post_text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    
+    # মেসেজ ডিজাইন করা হলো
+    final_message = f"🚨 FCFS AIRDROP ALERT! 🚨\n\n{post_text}"
+    
     data = {
         "chat_id": CHAT_ID,
-        "text": "🚨 <b>FCFS AIRDROP ALERT!</b> 🚨\n\nনতুন অফার আপনার বটে ফরোয়ার্ড করা হয়েছে। জলদি চেক করুন!",
-        "parse_mode": "HTML"
+        "text": final_message
     }
+    
     req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers={'Content-Type': 'application/json'})
     try:
         urllib.request.urlopen(req)
     except Exception as e:
-        print_log(f"সাউন্ড অ্যালার্ম পাঠাতে এরর: {e}")
+        print_log(f"মেইন অ্যাকাউন্টে মেসেজ পাঠাতে এরর: {e}")
 
 @client.on(events.NewMessage(incoming=True, outgoing=True))
 async def keyword_handler(event):
@@ -80,15 +83,11 @@ async def keyword_handler(event):
                             pass 
                 
                 if is_valid_post:
-                    print_log("🎯 এডমিনের টার্গেট পোস্ট পাওয়া গেছে! মেসেজ ফরোয়ার্ড করা হচ্ছে...")
+                    print_log("🎯 এডমিনের টার্গেট পোস্ট পাওয়া গেছে! মেইন অ্যাকাউন্টে পাঠানো হচ্ছে...")
                     try:
-                        # ১. আসল পোস্টটি বটে ফরোয়ার্ড করা হলো (বিনা সাউন্ডে)
-                        await event.forward_to(DESTINATION_BOT)
-                        
-                        # ২. সাউন্ড এবং পপ-আপের জন্য Bot API দিয়ে অ্যালার্ম পাঠানো হলো
-                        send_sound_alert()
-                        
-                        print_log("✅ বটের কাছে মেসেজ ও সাউন্ড অ্যালার্ম পাঠানো সফল হয়েছে!")
+                        # Bot API ব্যবহার করে সরাসরি মেইন অ্যাকাউন্টে পাঠানো হচ্ছে
+                        send_alert_to_main_bot(event.text)
+                        print_log("✅ মেইন অ্যাকাউন্টের বটে সাউন্ডসহ মেসেজ পাঠানো সফল হয়েছে!")
                     except Exception as e:
                         print_log(f"❌ মেসেজ পাঠাতে সমস্যা: {e}")
                 else:
@@ -105,7 +104,7 @@ async def main():
             print_log("❌ ERROR: আপনার Session String কাজ করছে না!")
             return
             
-        print_log("✅ বট সফলভাবে চালু হয়েছে! স্ক্যান চলছে...")
+        print_log("✅ ২য় অ্যাকাউন্টের স্ক্যানার বট সফলভাবে চালু হয়েছে! স্ক্যান চলছে...")
         await client.run_until_disconnected()
     except Exception as e:
         print_log(f"❌ সমস্যা হয়েছে: {e}")
