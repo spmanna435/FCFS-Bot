@@ -1,8 +1,6 @@
 import os
 import re
 import logging
-import urllib.request
-import json
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from flask import Flask
@@ -17,9 +15,8 @@ session_string = os.environ.get("SESSION_STRING")
 TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve', 'farcaster users' , 'farcaster user' , 'giveaway', 'exchange airdrop' , 'instant free' , 'instant claim' , 'exchange offer' , 'wallet airdrop' , 'wallet offer' , 'limited']
 # -----------------------------------------------------
 
-# সাউন্ড ও পপ-আপ নোটিফিকেশনের জন্য (আপনার Apps Script-এর ডাটা এখানে বসান)
-BOT_TOKEN = "8737282880:AAGKl_ufJ9tPnx16TEX29Vvp-cUxml63bT8"
-CHAT_ID = "2091678347"
+# এখানে আপনার বানানো নতুন পাবলিক গ্রুপের ইউজারনেম দিন (অবশ্যই @ সহ)
+FORWARD_GROUP = '@mannapersonalgroup'
 # -----------------------------------------------------
 
 app = Flask(__name__)
@@ -40,24 +37,6 @@ def print_log(msg):
 client = TelegramClient(StringSession(session_string), api_id, api_hash)
 FAST_PATTERN = re.compile(r'\b(fast|first|instant|claim)\s*\d+', re.IGNORECASE)
 
-# সরাসরি মেইন অ্যাকাউন্টের বটে সাউন্ডসহ পুরো পোস্ট পাঠানোর ফাংশন
-def send_alert_to_main_bot(post_text):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    
-    # মেসেজ ডিজাইন করা হলো
-    final_message = f"🚨 FCFS AIRDROP ALERT! 🚨\n\n{post_text}"
-    
-    data = {
-        "chat_id": CHAT_ID,
-        "text": final_message
-    }
-    
-    req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers={'Content-Type': 'application/json'})
-    try:
-        urllib.request.urlopen(req)
-    except Exception as e:
-        print_log(f"মেইন অ্যাকাউন্টে মেসেজ পাঠাতে এরর: {e}")
-
 @client.on(events.NewMessage(incoming=True, outgoing=True))
 async def keyword_handler(event):
     if event.is_group or event.is_channel:
@@ -69,6 +48,7 @@ async def keyword_handler(event):
             if has_keyword or has_fast_number:
                 is_valid_post = False
                 
+                # এডমিন বা চ্যানেল ফিল্টার
                 if event.is_channel and not event.is_group:
                     is_valid_post = True
                 elif event.is_group:
@@ -82,12 +62,12 @@ async def keyword_handler(event):
                         except Exception:
                             pass 
                 
+                # শুধু আপনার নির্দিষ্ট গ্রুপে ফরোয়ার্ড করবে
                 if is_valid_post:
-                    print_log("🎯 এডমিনের টার্গেট পোস্ট পাওয়া গেছে! মেইন অ্যাকাউন্টে পাঠানো হচ্ছে...")
+                    print_log("🎯 এডমিনের টার্গেট পোস্ট পাওয়া গেছে! গ্রুপে ফরোয়ার্ড করা হচ্ছে...")
                     try:
-                        # Bot API ব্যবহার করে সরাসরি মেইন অ্যাকাউন্টে পাঠানো হচ্ছে
-                        send_alert_to_main_bot(event.text)
-                        print_log("✅ মেইন অ্যাকাউন্টের বটে সাউন্ডসহ মেসেজ পাঠানো সফল হয়েছে!")
+                        await event.forward_to(FORWARD_GROUP)
+                        print_log("✅ গ্রুপে মেসেজ ফরোয়ার্ড সফল হয়েছে!")
                     except Exception as e:
                         print_log(f"❌ মেসেজ পাঠাতে সমস্যা: {e}")
                 else:
@@ -104,7 +84,7 @@ async def main():
             print_log("❌ ERROR: আপনার Session String কাজ করছে না!")
             return
             
-        print_log("✅ ২য় অ্যাকাউন্টের স্ক্যানার বট সফলভাবে চালু হয়েছে! স্ক্যান চলছে...")
+        print_log("✅ স্ক্যানার বট সফলভাবে চালু হয়েছে! স্ক্যান চলছে...")
         await client.run_until_disconnected()
     except Exception as e:
         print_log(f"❌ সমস্যা হয়েছে: {e}")
