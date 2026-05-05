@@ -12,7 +12,7 @@ api_hash = os.environ.get("API_HASH")
 session_string = os.environ.get("SESSION_STRING")
 
 # -----------------------------------------------------
-TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve']
+TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve', 'farcaster users' , 'farcaster user' , 'giveaway', 'exchange airdrop' , 'instant free' , 'exchange offer' , 'wallet airdrop' , 'wallet offer' , 'limited']
 DESTINATION_BOT = '@my_airdrop_notification_bot' 
 # -----------------------------------------------------
 
@@ -32,7 +32,7 @@ def print_log(msg):
     print(msg, flush=True)
 
 client = TelegramClient(StringSession(session_string), api_id, api_hash)
-FAST_PATTERN = re.compile(r'\bfast\s*\d+', re.IGNORECASE)
+FAST_PATTERN = re.compile(r'\b(fast|first|instant|claim)\s*\d+', re.IGNORECASE)
 
 @client.on(events.NewMessage(incoming=True, outgoing=True))
 async def keyword_handler(event):
