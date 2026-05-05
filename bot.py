@@ -45,24 +45,21 @@ async def keyword_handler(event):
             if has_keyword or has_fast_number:
                 is_valid_post = False
                 
-                # জাদুকরী ফিল্টার: চেক করা হচ্ছে মেসেজটি কে দিয়েছে
+                # শুধুমাত্র এডমিন/চ্যানেল ফিল্টার
                 if event.is_channel and not event.is_group:
-                    # ১. যদি সরাসরি চ্যানেলের পোস্ট হয় (সবসময় এডমিন দেয়)
                     is_valid_post = True
                 elif event.is_group:
-                    # ২. যদি চ্যানেল থেকে গ্রুপে অটো-কমেন্ট বা ফরোয়ার্ড হয়ে আসে অথবা কেউ Anonymous Admin হিসেবে দেয়
                     if event.sender_id is None or (event.message.fwd_from and event.message.fwd_from.from_id):
                         is_valid_post = True
                     else:
-                        # ৩. চেক করা হচ্ছে মেসেজটি গ্রুপের কোনো সাধারণ মেম্বার নাকি আসল এডমিন দিয়েছে
                         try:
                             perms = await client.get_permissions(event.chat_id, event.sender_id)
                             if perms.is_admin or perms.is_creator:
                                 is_valid_post = True
                         except Exception:
-                            pass # এডমিন না হলে ইগনোর করবে
+                            pass 
                 
-                # যদি এডমিন বা চ্যানেল হয়, তবেই মেসেজ পাঠাবে
+                # ভ্যালিড হলে নোটিফিকেশন বটে পাঠাবে
                 if is_valid_post:
                     print_log("🎯 এডমিনের টার্গেট পোস্ট পাওয়া গেছে! মেসেজ ফরোয়ার্ড করা হচ্ছে...")
                     try:
@@ -75,6 +72,13 @@ async def keyword_handler(event):
                     print_log("🚫 সাধারণ মেম্বারের মেসেজ ইগনোর করা হয়েছে।")
 
 async def main():
+    # ---------------------------------------------------------
+    # PERMANENT FIX: সার্ভার চালুর পর ৩০ সেকেন্ড অপেক্ষা করবে
+    # ---------------------------------------------------------
+    print_log("⏳ Render-এর পুরোনো সার্ভার পুরোপুরি বন্ধ হওয়ার জন্য ৩০ সেকেন্ড অপেক্ষা করা হচ্ছে...")
+    print_log("⏳ এটি Session Error চিরতরে বন্ধ করবে। দয়া করে অপেক্ষা করুন...")
+    await asyncio.sleep(30)
+    
     print_log("🔄 টেলিগ্রামের সাথে কানেক্ট করার চেষ্টা করা হচ্ছে...")
     try:
         await client.connect()
