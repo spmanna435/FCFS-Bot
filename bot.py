@@ -65,8 +65,12 @@ async def main():
         print_log(f"❌ সমস্যা হয়েছে: {e}")
 
 if __name__ == '__main__':
+    # ওয়েব সার্ভার চালু
     Thread(target=run_server).start()
-    loop = asyncio.get_event_loop()
+    
+    # নতুন Python ভার্সনের জন্য Event Loop ফিক্স
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
         loop.run_until_complete(main())
     except Exception as e:
