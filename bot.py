@@ -12,11 +12,11 @@ api_hash = os.environ.get("API_HASH")
 session_string = os.environ.get("SESSION_STRING")
 
 # -----------------------------------------------------
-TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve', 'verified twitter' , 'twitter premium' , 'farcaster users' , 'farcaster user' , 'giveaway', 'exchange airdrop' , 'instant free' , 'instant claim' , 'exchange offer' , 'wallet airdrop' , 'wallet offer' , 'limited']
+TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve', 'free claim' , 'verified twitter' , 'twitter premium' , 'farcaster users' , 'farcaster user' , 'giveaway', 'exchange airdrop' , 'instant free' , 'instant claim' , 'exchange offer' , 'wallet airdrop' , 'wallet offer' , 'limited']
 # -----------------------------------------------------
 
 # এখানে আপনার বানানো নতুন পাবলিক গ্রুপের ইউজারনেম দিন (অবশ্যই @ সহ)
-FORWARD_GROUP = '@mannapersonalgroup'
+FORWARD_GROUP = '@instantfcfsairdrop'
 # -----------------------------------------------------
 
 app = Flask(__name__)
@@ -35,7 +35,9 @@ def print_log(msg):
     print(msg, flush=True)
 
 client = TelegramClient(StringSession(session_string), api_id, api_hash)
-FAST_PATTERN = re.compile(r'\b(fast|first|instant|claim|free)\s*\d+', re.IGNORECASE)
+
+# --- আপডেট করা লজিক: আগে বা পরে সংখ্যা এবং কারেন্সি/সিম্বল ($/BNB/ETH) থাকলে ধরবে ---
+FAST_PATTERN = re.compile(r'(\d+[\d,\.]*\s*[a-zA-Z$€]*\s*\b(fast|first|instant|claim|free)\b|\b(fast|first|instant|claim|free)\b\s*[a-zA-Z$€]*\s*[\d,\.]+)', re.IGNORECASE)
 
 @client.on(events.NewMessage(incoming=True, outgoing=True))
 async def keyword_handler(event):
