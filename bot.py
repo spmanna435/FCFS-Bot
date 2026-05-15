@@ -37,8 +37,7 @@ def print_log(msg):
 client = TelegramClient(StringSession(session_string), api_id, api_hash)
 
 # --- আপডেট করা লজিক: আগে বা পরে সংখ্যা এবং কারেন্সি/সিম্বল ($/BNB/ETH) থাকলে ধরবে ---
-FAST_PATTERN = re.compile(r'(\d+[\d,\.]*\s*[a-zA-Z$€]*\s*\b(fast|first|instant|claim|free)\b|\b(fast|first|instant|claim|free)\b\s*[a-zA-Z$€]*\s*[\d,\.]+)', re.IGNORECASE)
-
+FAST_PATTERN = re.compile(r'\b\d+[\d,\.]*\s*(?:\$|€|usdt|bnb|eth|btc|matic|sol|trx|k|m)?\s*\b(fast|first|instant|claim|free)\b|\b(fast|first|instant|claim|free)\b\s*(?:\$|€)?\s*\d+', re.IGNORECASE)
 @client.on(events.NewMessage(incoming=True, outgoing=True))
 async def keyword_handler(event):
     if event.is_group or event.is_channel:
