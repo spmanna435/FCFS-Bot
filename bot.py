@@ -13,7 +13,7 @@ api_hash = os.environ.get("API_HASH")
 session_string = os.environ.get("SESSION_STRING")
 
 # -----------------------------------------------------
-TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve', 'free claim' , 'verified x' , 'x premium' , 'verified twitter' , 'twitter premium' , 'farcaster users' , 'farcaster user' , 'giveaway', 'exchange airdrop' , 'instant free' , 'instant claim' , 'exchange offer' , 'wallet airdrop' , 'wallet offer' , 'limited']
+TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve', 'free claim' , 'verified x' , 'x premium' , 'free nft' , 'public mint' , 'nft mint' , 'nft minting' , 'verified twitter' , 'twitter premium' , 'farcaster users' , 'farcaster user' , 'giveaway', 'exchange airdrop' , 'instant free' , 'instant claim' , 'exchange offer' , 'wallet airdrop' , 'wallet offer' , 'limited']
 # -----------------------------------------------------
 
 # এখানে আপনার বানানো নতুন পাবলিক গ্রুপের ইউজারনেম দিন (অবশ্যই @ সহ)
@@ -59,8 +59,9 @@ async def safe_forward(event):
 # --- মূল মেসেজ স্ক্যানিং লজিক ---
 async def process_message(event):
     if event.is_group or event.is_channel:
-        if event.text:
-            text = event.text.lower()
+         # text এর জায়গায় raw_text দেওয়া হয়েছে, যাতে বোল্ড বা স্টাইল করা লেখা সহজে পড়তে পারে
+        if event.raw_text:
+            text = event.raw_text.lower()
             has_keyword = any(keyword in text for keyword in TARGET_KEYWORDS)
             has_fast_number = bool(FAST_PATTERN.search(text))
             
