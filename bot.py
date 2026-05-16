@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import unicodedata
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from telethon.errors import FloodWaitError  # নতুন অ্যাড করা হয়েছে
@@ -61,7 +62,8 @@ async def process_message(event):
     if event.is_group or event.is_channel:
          # text এর জায়গায় raw_text দেওয়া হয়েছে, যাতে বোল্ড বা স্টাইল করা লেখা সহজে পড়তে পারে
         if event.raw_text:
-            text = event.raw_text.lower()
+            normal_text = unicodedata.normalize('NFKC', event.raw_text)
+            text = normal_text.lower()
             has_keyword = any(keyword in text for keyword in TARGET_KEYWORDS)
             has_fast_number = bool(FAST_PATTERN.search(text))
             
