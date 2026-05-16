@@ -39,7 +39,7 @@ def print_log(msg):
 client = TelegramClient(StringSession(session_string), api_id, api_hash)
 
 # --- আপডেট করা লজিক: আগে বা পরে সংখ্যা এবং কারেন্সি/সিম্বল ($/BNB/ETH) থাকলে ধরবে ---
-FAST_PATTERN = re.compile(r'\b\d+[\d,\.]*\s*(?:\$|€|usdt|bnb|eth|btc|matic|sol|trx|k|m)?\s*\b(fast|first|instant|claim|free)\b|\b(fast|first|instant|claim|free)\b\s*(?:\$|€)?\s*\d+', re.IGNORECASE)
+FAST_PATTERN = re.compile(r'\b\d+[\d,\.]*\s*(?:\$|usd|usdt|bnb|eth|btc|usdc|sol|b|k|m)?\s*\b(first|instant|claim|free)\b|\b(first|instant|claim|free)\b\s*(?:\$|€)?\s*\d+', re.IGNORECASE)
 
 # --- ১০০% মিস না হওয়ার জন্য Safe Forward Function ---
 async def safe_forward(event):
