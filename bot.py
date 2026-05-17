@@ -2,7 +2,8 @@ import os
 import re
 import logging
 import unicodedata
-from collections import deque
+import hashlib  # মেসেজের টেক্সট চেনার জন্য
+import time     # সময় ট্র্যাক করার জন্য
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from telethon.errors import FloodWaitError
@@ -16,7 +17,6 @@ session_string = os.environ.get("SESSION_STRING")
 
 # -----------------------------------------------------
 TARGET_KEYWORDS = ['fcfs', 'first come', 'first serve', 'free claim' , 'verified x' , 'x premium' , 'free nft' , 'public mint' , 'nft mint' , 'nft minting' , 'verified twitter' , 'twitter premium' , 'farcaster users' , 'farcaster user' , 'giveaway', 'exchange airdrop' , 'instant free' , 'instant claim' , 'exchange offer' , 'wallet airdrop' , 'wallet offer' , 'limited']
-
 FORWARD_GROUP = '@instantfcfsairdrop'
 # -----------------------------------------------------
 
@@ -38,8 +38,8 @@ def print_log(msg):
 client = TelegramClient(StringSession(session_string), api_id, api_hash)
 FAST_PATTERN = re.compile(r'\b\d+[\d,\.]*\s*(?:\$|usd|usdt|bnb|eth|btc|usdc|sol|b|k|m)?\s*\b(first|instant|claim|free)\b|\b(first|instant|claim|free)\b\s*(?:\$|€)?\s*\d+', re.IGNORECASE)
 
-# ডাবল মেসেজ আটকানোর মেমরি ক্যাশ
-forwarded_cache = deque(maxlen=500)
+# --- নতুন বুলেটপ্রুফ মেমরি সিস্টেম (মেসেজ টেক্সট + টাইম) ---
+recent_messages = {}
 
 async def safe_forward(event):
     max_retries = 3
@@ -60,11 +60,16 @@ async def process_message(event):
     if event.is_group or event.is_channel:
         if event.raw_text:
             
-            # ২. ডাবল চেক: মেসেজটি কি আগে পাঠানো হয়েছে?
-            msg_unique_id = f"{event.chat_id}_{event.id}"
-            if msg_unique_id in forwarded_cache:
-                return
-
+            # ১. মেসেজের একটি ইউনিক ফিঙ্গারপ্রিন্ট বানানো হলো (লেখার ওপর ভিত্তি করে)
+            msg_hash = hashlib.md5(event.raw_text.encode('utf-8')).hexdigest()
+            current_time = time.time()
+            
+            # ২. চেক করা হচ্ছে এই একই লেখা গত ১০ মিনিট (৬০০ সেকেন্ড) এর মধ্যে ফরোয়ার্ড হয়েছে কি না
+            if msg_hash in recent_messages:
+                if current_time - recent_messages[msg_hash] < 600:
+                    print_log("⚠️ একই মেসেজ বারবার আসছে। ডাবল ফরোয়ার্ড ব্লক করা হলো!")
+                    return
+            
             normal_text = unicodedata.normalize('NFKC', event.raw_text)
             text = normal_text.lower()
             has_keyword = any(keyword in text for keyword in TARGET_KEYWORDS)
@@ -73,7 +78,6 @@ async def process_message(event):
             if has_keyword or has_fast_number:
                 is_valid_post = False
                 
-                # ৩. এডমিন বা চ্যানেল ফিল্টার
                 if event.is_channel and not event.is_group:
                     is_valid_post = True
                 elif event.is_group:
@@ -89,11 +93,11 @@ async def process_message(event):
                 
                 if is_valid_post:
                     print_log("🎯 এডমিনের টার্গেট পোস্ট পাওয়া গেছে! গ্রুপে ফরোয়ার্ড করা হচ্ছে...")
-                    # মেমরিতে সেভ করে রাখা হলো
-                    forwarded_cache.append(msg_unique_id)
+                    # ৩. মেসেজ ফরোয়ার্ড করার পর মেমরিতে সেভ করে রাখা হলো
+                    recent_messages[msg_hash] = current_time
                     await safe_forward(event)
 
-# ৪. শুধুমাত্র "নতুন মেসেজ" (NewMessage) ধরবে। এডিট করা মেসেজ ধরার ফাংশন একদম মুছে দেওয়া হয়েছে।
+# শুধু নতুন মেসেজ ধরবে
 @client.on(events.NewMessage(incoming=True, outgoing=True))
 async def on_new_message(event):
     await process_message(event)
