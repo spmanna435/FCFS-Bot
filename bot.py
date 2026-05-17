@@ -1,10 +1,13 @@
 import os
 import re
+import time
 import logging
 import unicodedata
+import requests  # পিং সিস্টেমের জন্য অ্যাড করা হলো
+from collections import deque
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
-from telethon.errors import FloodWaitError  # নতুন অ্যাড করা হয়েছে
+from telethon.errors import FloodWaitError
 from flask import Flask
 from threading import Thread
 import asyncio
@@ -27,40 +30,50 @@ log.setLevel(logging.ERROR)
 
 @app.route('/')
 def home():
-    return "Bot is Running!"
+    return "Bot is Running 24/7!"
 
 def run_server():
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
+
+# --- 🚀 অ্যান্টি-স্লিপ পিং সিস্টেম (বটকে ঘুমাতে দেবে না) ---
+def ping_self():
+    while True:
+        try:
+            # Render নিজে থেকে তার লিংক বের করে নিজেকে নক করবে
+            url = os.environ.get('RENDER_EXTERNAL_URL', 'https://fcfs-bot.onrender.com')
+            requests.get(url)
+        except Exception:
+            pass
+        time.sleep(120)  # প্রতি ২ মিনিট পর পর নক করবে
 
 def print_log(msg):
     print(msg, flush=True)
 
 client = TelegramClient(StringSession(session_string), api_id, api_hash)
 
-# --- আপডেট করা লজিক: আগে বা পরে সংখ্যা এবং কারেন্সি/সিম্বল ($/BNB/ETH) থাকলে ধরবে ---
 FAST_PATTERN = re.compile(r'\b\d+[\d,\.]*\s*(?:\$|usd|usdt|bnb|eth|btc|usdc|sol|b|k|m)?\s*\b(first|instant|claim|free)\b|\b(first|instant|claim|free)\b\s*(?:\$|€)?\s*\d+', re.IGNORECASE)
 
-# --- ১০০% মিস না হওয়ার জন্য Safe Forward Function ---
+# মেমরি ক্যাশ (ডাবল মেসেজ আটকাবে)
+forwarded_cache = deque(maxlen=200)
+
 async def safe_forward(event):
-    max_retries = 3  # ৩ বার চেষ্টা করবে
+    max_retries = 3 
     for attempt in range(max_retries):
         try:
-            await asyncio.sleep(1) # তাড়াহুড়ো না করে ১ সেকেন্ড পর পাঠাবে
+            await asyncio.sleep(1) 
             await event.forward_to(FORWARD_GROUP)
             print_log("✅ গ্রুপে মেসেজ ফরোয়ার্ড সফল হয়েছে!")
-            return # সফল হলে লুপ থেকে বের হয়ে যাবে
+            return 
         except FloodWaitError as e:
-            print_log(f"⚠️ টেলিগ্রাম স্প্যাম লিমিট! {e.seconds} সেকেন্ড অপেক্ষা করে আবার চেষ্টা করা হচ্ছে...")
+            print_log(f"⚠️ টেলিগ্রাম স্প্যাম লিমিট! {e.seconds} সেকেন্ড অপেক্ষা...")
             await asyncio.sleep(e.seconds + 1)
         except Exception as e:
             print_log(f"❌ ফরোয়ার্ড করতে সমস্যা: {e}, আবার চেষ্টা করা হচ্ছে...")
             await asyncio.sleep(2)
 
-# --- মূল মেসেজ স্ক্যানিং লজিক ---
 async def process_message(event):
     if event.is_group or event.is_channel:
-         # text এর জায়গায় raw_text দেওয়া হয়েছে, যাতে বোল্ড বা স্টাইল করা লেখা সহজে পড়তে পারে
         if event.raw_text:
             normal_text = unicodedata.normalize('NFKC', event.raw_text)
             text = normal_text.lower()
@@ -70,7 +83,6 @@ async def process_message(event):
             if has_keyword or has_fast_number:
                 is_valid_post = False
                 
-                # এডমিন বা চ্যানেল ফিল্টার
                 if event.is_channel and not event.is_group:
                     is_valid_post = True
                 elif event.is_group:
@@ -84,22 +96,20 @@ async def process_message(event):
                         except Exception:
                             pass 
                 
-                # শুধু আপনার নির্দিষ্ট গ্রুপে ফরোয়ার্ড করবে
                 if is_valid_post:
-                    print_log("🎯 এডমিনের টার্গেট পোস্ট পাওয়া গেছে! গ্রুপে ফরোয়ার্ড করা হচ্ছে...")
-                    await safe_forward(event)
+                    msg_unique_id = f"{event.chat_id}_{event.id}"
+                    
+                    if msg_unique_id in forwarded_cache:
+                        print_log("⚠️ ডাবল ফরোয়ার্ড বাতিল করা হলো!")
+                    else:
+                        print_log("🎯 এডমিনের টার্গেট পোস্ট পাওয়া গেছে! ফরোয়ার্ড করা হচ্ছে...")
+                        forwarded_cache.append(msg_unique_id)
+                        await safe_forward(event)
                 else:
                     print_log("🚫 সাধারণ মেম্বারের মেসেজ ইগনোর করা হয়েছে।")
 
-# নতুন মেসেজ আসলে ধরবে
 @client.on(events.NewMessage(incoming=True, outgoing=True))
 async def on_new_message(event):
-    await process_message(event)
-
-# কেউ মেসেজ এডিট করে অফার বসালেও ধরবে (মিস হবে না!)
-@client.on(events.MessageEdited(incoming=True, outgoing=True))
-async def on_edited_message(event):
-    print_log("📝 একটি মেসেজ এডিট করা হয়েছে, চেক করা হচ্ছে...")
     await process_message(event)
 
 async def main():
@@ -120,6 +130,7 @@ async def main():
 
 if __name__ == '__main__':
     Thread(target=run_server).start()
+    Thread(target=ping_self).start()  # পিং সিস্টেম চালু করে দেওয়া হলো
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
